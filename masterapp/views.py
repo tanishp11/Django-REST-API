@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework import status
-from masterapp.models import Users
+from masterapp.models import Users,Category,Sub_category
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
 from django.contrib.auth.hashers import make_password
@@ -266,8 +266,160 @@ class User_udate_detail(APIView):
                             'status':status.HTTP_500_INTERNAL_SERVER_ERROR,
                             'message':'Something went wrong'
                         },
-                        status=400
+                        status=500
                     )
         
 
 
+
+
+class add_category(APIView):
+     
+    def post(self,request):
+        try:
+          
+            name=request.data.get('name')
+            description=request.data.get('description')
+            price=request.data.get('price')
+
+
+            if not name or not description or not price:
+                return Response(
+                        {
+                            'status':status.HTTP_400_BAD_REQUEST,
+                            'message':'Please enter name or description or price'
+                        }
+                )
+
+            data=Category.objects.create(
+                 name=name,
+                 description=description,
+                 price=price,
+                 is_active=True
+                )
+
+            data.save()
+
+            return Response(
+                {
+                    'status':201,
+                    'message':'Category added successfuly',
+                    'data':{
+                        'name':data.name,
+                        'description':data.description,
+                        'price':data.price,
+                    }
+                }
+            )
+        except Exception as e:
+            print("---------Exp---------------",e)
+            return Response(
+                        {
+                            'status':status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            'message':'Something went wrong'
+                        }
+                )
+
+
+
+class add_sub_category(APIView):
+ 
+    def post(self,request):
+        try:    
+
+            category_id=request.query_params.get('id')
+
+            if not category_id:
+                return Response(
+                        {
+                            'status':status.HTTP_400_BAD_REQUEST,
+                            'message':'Please provide category id'
+                        }
+                )
+            
+            try:
+                category=Category.objects.get(id=category_id)
+                print(f"Category found:-- {category}")
+            except Category.DoesNotExist:
+                    return Response(
+                    {
+                        'status': status.HTTP_400_BAD_REQUEST,
+                        'message': 'Category not found with this id',
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+              
+            name=request.data.get('name')
+            description=request.data.get('description')
+            price=request.data.get('price')
+            image = request.FILES.get('image') 
+
+            required_fields = {
+                'name': name,
+                'description': description,
+                'price': price
+              
+            }
+
+            for i, value in required_fields.items():
+                if not value:
+                    return Response(
+                        {
+                            'status': status.HTTP_400_BAD_REQUEST,
+                            'message': f"Please enter {i}",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+            if image:
+                if not image.name.endswith(('.jpg', '.png', '.jpeg')):
+                    return Response(
+                        {
+                            'status': status.HTTP_400_BAD_REQUEST,
+                            'message': 'Invalid image file format. Only jpg, jpeg, and png are allowed.',
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                image = None  # If no image is provided, set it to None
+            
+            data=Sub_category.objects.create(
+                name=name,
+                description=description,
+                price=price,
+                image=image,
+                is_active=True,
+                category=category
+
+            )
+            data.save()
+            
+            return Response(
+                {
+                    'status': status.HTTP_201_CREATED,
+                    'message': 'Subcategory created successfully',
+                    'data': {
+                        'id': data.id,
+                        'name': data.name,
+                        'category': data.category.id,
+                        'description': data.description,
+                        'price': data.price,
+                        'image': data.image.url if data.image else None,
+                        'is_active': data.is_active,
+                        'created_at': data.created_at,
+                    },
+                },
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            print("Exception:------------------:---------", e)
+            return Response(
+                    {
+                        'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        'message': 'Internal Server Error',
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+         
+
+            
